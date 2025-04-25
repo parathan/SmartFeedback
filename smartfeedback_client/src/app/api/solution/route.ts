@@ -1,11 +1,21 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
+import { apiCache } from '@/utils/cache';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: Request) {
   try {
     const { question, correctAnswer } = await request.json();
+
+    // Create a unique cache key based on the input
+    const cacheKey = `solution:${question}:${correctAnswer}`;
+
+    // Check if we have a cached response
+    const cachedResponse = apiCache.get<{ solution: string }>(cacheKey);
+    if (cachedResponse) {
+      return NextResponse.json(cachedResponse);
+    }
 
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
@@ -48,7 +58,12 @@ Make sure to:
     const response = await result.response;
     const text = response.text();
 
-    return NextResponse.json({ solution: text || "Let's solve this step by step..." });
+    const apiResponse = { solution: text || "I couldn't generate a solution for this problem. Please try again later." };
+
+    // Cache the response
+    apiCache.set(cacheKey, apiResponse);
+
+    return NextResponse.json(apiResponse);
   } catch (error) {
     console.error('Error generating solution:', error);
     return NextResponse.json(

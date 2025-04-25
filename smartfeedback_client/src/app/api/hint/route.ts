@@ -1,11 +1,21 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
+import { apiCache } from '@/utils/cache';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: Request) {
   try {
     const { question, userAnswer, correctAnswer } = await request.json();
+
+    // Create a unique cache key based on the input
+    const cacheKey = `hint:${question}:${userAnswer}:${correctAnswer}`;
+
+    // Check if we have a cached response
+    const cachedResponse = apiCache.get<{ hint: string }>(cacheKey);
+    if (cachedResponse) {
+      return NextResponse.json(cachedResponse);
+    }
 
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
@@ -30,7 +40,12 @@ Format your response as a clear, concise hint that helps the student make progre
     const response = await result.response;
     const text = response.text();
 
-    return NextResponse.json({ hint: text || "Let's break this down step by step. First, try solving each part of the equation separately." });
+    const apiResponse = { hint: text || "Let's break this down step by step. First, try solving each part of the equation separately." };
+
+    // Cache the response
+    apiCache.set(cacheKey, apiResponse);
+
+    return NextResponse.json(apiResponse);
   } catch (error) {
     console.error('Error generating hint:', error);
     return NextResponse.json(
