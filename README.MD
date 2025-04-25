@@ -108,3 +108,10 @@ With more time, I would implement the following improvements:
    - The idea is generating questions and solutions dynamically to fit the users needs.
    - Would need to modify the prompts to suit the dynamic questions.
 
+
+## Tech Stack
+
+The following tech stack was used:  
+- Frontend: NextJS  
+- Backend: NextJS (serverless API functions)  
+- LLM: Gemini  
